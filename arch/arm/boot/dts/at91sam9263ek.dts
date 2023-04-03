@@ -26,7 +26,7 @@
 		};
 
 		main_xtal {
-			clock-frequency = <16367660>;
+			clock-frequency = <18432000>;
 		};
 	};
 
@@ -56,6 +56,23 @@
 				status = "okay";
 			};
 
+			usart1: serial@fff90000 {
+				pinctrl-0 = <
+					&pinctrl_usart1
+					&pinctrl_usart1_rts>;
+				rts-gpios = <&pioD 8 GPIO_ACTIVE_HIGH>;
+				linux,rs485-enabled-at-boot-time;
+				status = "okay";
+			};
+
+			usart2: serial@fff94000 {
+				pinctrl-0 = <
+					&pinctrl_usart2
+					&pinctrl_usart2_rts>;
+				rts-gpios = <&pioD 6 GPIO_ACTIVE_HIGH>;
+				linux,rs485-enabled-at-boot-time;
+				status = "okay";
+			};
 			macb0: ethernet@fffbc000 {
 				phy-mode = "rmii";
 				status = "okay";
@@ -70,15 +87,13 @@
 				pinctrl-0 = <
 					&pinctrl_board_mmc0
 					&pinctrl_mmc0_clk
-					&pinctrl_mmc0_slot0_cmd_dat0
-					&pinctrl_mmc0_slot0_dat1_3>;
-				pinctrl-names = "default";
+					&pinctrl_mmc0_slot1_cmd_dat0
+					&pinctrl_mmc0_slot1_dat1_3>;
 				status = "okay";
-				slot@0 {
-					reg = <0>;
+				slot@1 {
+					reg = <1>;
 					bus-width = <4>;
-					cd-gpios = <&pioE 18 GPIO_ACTIVE_HIGH>;
-					wp-gpios = <&pioE 19 GPIO_ACTIVE_HIGH>;
+					cd-gpios = <&pioA 21 GPIO_ACTIVE_LOW>;
 				};
 			};
 
@@ -86,19 +101,92 @@
 				mmc0 {
 					pinctrl_board_mmc0: mmc0-board {
 						atmel,pins =
-							<AT91_PIOE 18 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP_DEGLITCH 	/* PE18 gpio CD pin pull up and deglitch */
-							 AT91_PIOE 19 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP>;	/* PE19 gpio WP pin pull up */
+							<AT91_PIOA 21 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP_DEGLITCH>;	/* PA21 gpio CD pin pull up and deglitch */
 					};
+				};
+
+				mmc1 {
+					pinctrl_board_mmc1: mmc1-board {
+						atmel,pins =
+							<AT91_PIOE 22 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP_DEGLITCH>;	/* PE22 gpio CD pin pull up and deglitch */
+					};
+				};
+
+				spi1 {
+					pinctrl_ads7843: ads7843-0 {
+						atmel,pins =
+							<AT91_PIOA 15 AT91_PERIPH_GPIO 0>;	/* PA15 IRQ1 pin */
+					};
+				};
+
+				i2c-gpio-0 {
+					pinctrl_wd_aux: wd-0 {
+						atmel,pins =
+							<AT91_PIOD 14 AT91_PERIPH_GPIO 0>;	/* PD14 WD output GPIO */
+					};
+				};
+			};
+
+			mmc1: mmc@fff84000 {
+				pinctrl-0 = <
+					&pinctrl_board_mmc1
+					&pinctrl_mmc1_clk
+					&pinctrl_mmc1_slot0_cmd_dat0
+					&pinctrl_mmc1_slot0_dat1_3>;
+				status = "okay";
+				slot@0 {
+					reg = <0>;
+					bus-width = <4>;
+					cd-gpios = <&pioE 22 GPIO_ACTIVE_LOW>;
 				};
 			};
 
 			spi0: spi@fffa4000 {
 				status = "okay";
-				cs-gpios = <&pioA 5 0>, <0>, <0>, <0>;
+				cs-gpios = <&pioA 5 0>, <&pioA 3 0>, <0>, <0>;
 				mtd_dataflash@0 {
 					compatible = "atmel,at45", "atmel,dataflash";
 					spi-max-frequency = <50000000>;
 					reg = <0>;
+				};
+
+				sc16_uart: sc16is750@1 {
+					compatible = "nxp,sc16is752";
+					reg = <1>;
+					interrupt-parent = <&pioD>;
+					interrupts = <4 IRQ_TYPE_EDGE_FALLING>;
+					clock-frequency = <3686400>;
+					gpio-controller;
+					#gpio-cells = <2>;
+				};
+			};
+
+			spi1: spi@fffa8000 {
+				status = "okay";
+				cs-gpios = <&pioB 15 0>, <0>, <0>, <0>;
+				ads7843@0 {
+					reg = <0>;	/* CS0 */
+					compatible = "ti,ads7843";
+					pinctrl-0 = <&pinctrl_ads7843>;
+					interrupt-parent = <&pioA>;
+					interrupts = <15 IRQ_TYPE_EDGE_FALLING>;
+					//interrupts = <31 IRQ_TYPE_EDGE_FALLING 0>;
+					spi-max-frequency = <1000000>;
+					pendown-gpio = <&pioA 15 GPIO_ACTIVE_HIGH>;
+					ti,vref-mv = /bits/ 16 <3300>;
+					/* ti,x-min = /bits/ 16 <0>;
+					ti,x-max = /bits/ 16 <320>;
+					ti,y-min = /bits/ 16 <0>;
+					ti,y-max = /bits/ 16 <240>; */
+					ti,x-plate-ohms = /bits/ 16 <600>;
+					ti,pressure-max = /bits/ 16 <255>;
+					/* ti,debounce-max = /bits/ 16 <10>;
+					ti,debounce-tol = /bits/ 16 <3>;
+					ti,debounce-rep = /bits/ 16 <1>;
+					ti,settle-delay-usec = /bits/ 16 <150>;
+					ti,penirq-recheck-delay-usecs = /bits/ 16 <1>; */
+
+					wakeup-source;
 				};
 			};
 
@@ -115,23 +203,25 @@
 				bits-per-pixel = <16>;
 				atmel,lcdcon-backlight;
 				atmel,dmacon = <0x1>;
-				atmel,lcdcon2 = <0x80008002>;
+				atmel,lcdcon2 = <0x80009802>;
 				atmel,guard-time = <1>;
 
 				display-timings {
 					native-mode = <&timing0>;
 					timing0: timing0 {
-						clock-frequency = <4965000>;
-						hactive = <240>;
-						vactive = <320>;
-						hback-porch = <1>;
-						hfront-porch = <33>;
-						vback-porch = <1>;
-						vfront-porch = <0>;
-						hsync-len = <5>;
-						vsync-len = <1>;
+						clock-frequency = <6500000>;
+						hactive = <320>;
+						vactive = <240>;
+						hback-porch = <8>;
+						hfront-porch = <20>;
+						vback-porch = <16>;
+						vfront-porch = <4>;
+						hsync-len = <60>;
+						vsync-len = <2>;
+						pixelclk-active = <1>;
 						hsync-active = <1>;
 						vsync-active = <1>;
+						de-active = <1>;
 					};
 				};
 			};
@@ -147,8 +237,8 @@
 
 				nand@3 {
 					reg = <0x3 0x0 0x800000>;
-					rb-gpios = <&pioA 22 GPIO_ACTIVE_HIGH>;
-					cs-gpios = <&pioA 15 GPIO_ACTIVE_HIGH>;
+					rb-gpios = <&pioB 30 GPIO_ACTIVE_HIGH>;
+					cs-gpios = <&pioD 15 GPIO_ACTIVE_HIGH>;
 					nand-bus-width = <8>;
 					nand-ecc-mode = "soft";
 					nand-on-flash-bbt;
@@ -159,44 +249,9 @@
 						#address-cells = <1>;
 						#size-cells = <1>;
 
-						at91bootstrap@0 {
-							label = "at91bootstrap";
-							reg = <0x0 0x20000>;
-						};
-
-						barebox@20000 {
-							label = "barebox";
-							reg = <0x20000 0x40000>;
-						};
-
-						bareboxenv@60000 {
-							label = "bareboxenv";
-							reg = <0x60000 0x20000>;
-						};
-
-						bareboxenv2@80000 {
-							label = "bareboxenv2";
-							reg = <0x80000 0x20000>;
-						};
-
-						oftree@80000 {
-							label = "oftree";
-							reg = <0xa0000 0x20000>;
-						};
-
-						kernel@a0000 {
-							label = "kernel";
-							reg = <0xc0000 0x400000>;
-						};
-
-						rootfs@4a0000 {
-							label = "rootfs";
-							reg = <0x4c0000 0x7800000>;
-						};
-
-						data@7ca0000 {
+						data@0 {
 							label = "data";
-							reg = <0x7cc0000 0x8340000>;
+							reg = <0x0 0x10000000>;
 						};
 					};
 				};
@@ -206,8 +261,11 @@
 		usb0: ohci@a00000 {
 			num-ports = <2>;
 			status = "okay";
-			atmel,vbus-gpio = <&pioA 24 GPIO_ACTIVE_HIGH
-					   &pioA 21 GPIO_ACTIVE_HIGH
+			atmel,vbus-gpio = <&pioB 1 GPIO_ACTIVE_LOW
+					   &pioB 3 GPIO_ACTIVE_LOW
+					  >;
+			atmel,oc-gpio = <&pioB 0 GPIO_ACTIVE_LOW
+					   &pioB 2 GPIO_ACTIVE_LOW
 					  >;
 		};
 	};
@@ -215,33 +273,34 @@
 	leds {
 		compatible = "gpio-leds";
 
-		d3 {
-			label = "d3";
+		usart0_en {
+			label = "usart0_en";
 			gpios = <&pioB 7 GPIO_ACTIVE_HIGH>;
-			linux,default-trigger = "heartbeat";
 		};
 
-		d2 {
-			label = "d2";
-			gpios = <&pioC 29 GPIO_ACTIVE_LOW>;
-			linux,default-trigger = "nand-disk";
+		usart0_shdn {
+			label = "usart0_shdn";
+			gpios = <&pioD 10 GPIO_ACTIVE_LOW>;
+		};
+
+		sc16_uart_en {
+			label = "sc16_uart_en";
+			gpios = <&sc16_uart 2 GPIO_ACTIVE_HIGH>;
+		};
+
+		sc16_uart_shdn {
+			label = "sc16_uart_shdn";
+			gpios = <&sc16_uart 3 GPIO_ACTIVE_LOW>;
 		};
 	};
 
 	gpio_keys {
 		compatible = "gpio-keys";
 
-		left_click {
-			label = "left_click";
+		wakeup {
+			label = "wakeup";
 			gpios = <&pioC 5 GPIO_ACTIVE_LOW>;
 			linux,code = <272>;
-			wakeup-source;
-		};
-
-		right_click {
-			label = "right_click";
-			gpios = <&pioC 4 GPIO_ACTIVE_LOW>;
-			linux,code = <273>;
 			wakeup-source;
 		};
 	};
@@ -253,6 +312,21 @@
 			compatible = "atmel,24c512";
 			reg = <0x50>;
 			pagesize = <128>;
+		};
+
+		rtc@68 {
+			compatible = "st,m41t87";
+			reg = <0x68>;
+			pinctrl-0 = <&pinctrl_wd_aux>;
+			pinctrl-names = "default";
+			/* interrupt-parent = <&pioC>;
+			interrupts = <5 IRQ_TYPE_EDGE_FALLING>; */
+
+			clock {
+				compatible = "fixed-clock";
+				#clock-cells = <0>;
+				clock-frequency = <32768>;
+			};
 		};
 	};
 };
