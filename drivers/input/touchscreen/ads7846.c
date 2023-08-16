@@ -186,10 +186,10 @@ struct ads7846 {
 	| ADS_12_BIT | ADS_DFR | \
 	(adc ? ADS_PD10_ADC_ON : 0) | (vref ? ADS_PD10_REF_ON : 0))
 
-#define	READ_Y(vref)	(READ_12BIT_DFR(y,  1, vref))
+#define	READ_Y(vref)	(READ_12BIT_DFR(y,  0, vref))
 #define	READ_Z1(vref)	(READ_12BIT_DFR(z1, 1, vref))
 #define	READ_Z2(vref)	(READ_12BIT_DFR(z2, 1, vref))
-#define	READ_X(vref)	(READ_12BIT_DFR(x,  1, vref))
+#define	READ_X(vref)	(READ_12BIT_DFR(x,  0, vref))
 #define	PWRDOWN		(READ_12BIT_DFR(y,  0, 0))	/* LAST */
 
 /* single-ended samples need to first power up reference voltage;
@@ -383,7 +383,8 @@ static int ads7846_read12_ser(struct device *dev, unsigned command)
 	}
 
 	/* Enable ADC in every case */
-	command |= ADS_PD10_ADC_ON;
+	if (ts->model != 7843)
+		command |= ADS_PD10_ADC_ON;
 
 	/* take sample */
 	req->command = (u8) command;
@@ -776,9 +777,10 @@ static int ads7846_filter(struct ads7846 *ts)
 	int action;
 	int val;
 	unsigned int cmd_idx, b;
+	unsigned int npkt = ts->model == 7843 ? packet->cmds : packet->cmds - 1;
 
 	packet->ignore = false;
-	for (cmd_idx = packet->last_cmd_idx; cmd_idx < packet->cmds - 1; cmd_idx++) {
+	for (cmd_idx = packet->last_cmd_idx; cmd_idx < npkt; cmd_idx++) {
 		struct ads7846_buf_layout *l = &packet->l[cmd_idx];
 
 		packet->last_cmd_idx = cmd_idx;
@@ -817,6 +819,9 @@ static void ads7846_read_state(struct ads7846 *ts)
 
 		m = &ts->msg[msg_idx];
 		error = spi_sync(ts->spi, m);
+		/* unsigned int cmd_idx;
+		for (cmd_idx = packet->last_cmd_idx; cmd_idx < packet->cmds; cmd_idx++)
+			dev_dbg(&ts->spi->dev, "cmd %x data %x\n", packet->tx[cmd_idx].cmd, packet->rx[cmd_idx].data); */
 		if (error) {
 			dev_err(&ts->spi->dev, "spi_sync --> %d\n", error);
 			packet->ignore = true;
@@ -1067,6 +1072,8 @@ static int ads7846_setup_spi_msg(struct ads7846 *ts,
 
 	if (ts->model == 7846)
 		packet->cmds = 5; /* x, y, z1, z2, pwdown */
+	else if (ts->model == 7843)
+		packet->cmds = 2; /* x, y */
 	else
 		packet->cmds = 3; /* x, y, pwdown */
 
@@ -1111,6 +1118,9 @@ static int ads7846_setup_spi_msg(struct ads7846 *ts,
 	for (cmd_idx = 0; cmd_idx < packet->cmds; cmd_idx++) {
 		struct ads7846_buf_layout *l = &packet->l[cmd_idx];
 		u8 cmd = ads7846_get_cmd(cmd_idx, vref);
+		if (cmd_idx <= ADS7846_Y && ts->model != 7843)
+			cmd |= ADS_PD10_ADC_ON;
+		dev_dbg(&ts->spi->dev, "cmd[%d] = 0x%x\n", cmd_idx, cmd);
 
 		for (b = 0; b < l->count; b++)
 			packet->tx[l->offset + b].cmd = cmd;
@@ -1389,7 +1399,7 @@ static int ads7846_probe(struct spi_device *spi)
 	 */
 	if (ts->model == 7845)
 		ads7845_read12_ser(&spi->dev, PWRDOWN);
-	else
+	else if (ts->model != 7843)
 		(void) ads7846_read12_ser(&spi->dev, READ_12BIT_SER(vaux));
 
 	err = sysfs_create_group(&spi->dev.kobj, &ads784x_attr_group);
