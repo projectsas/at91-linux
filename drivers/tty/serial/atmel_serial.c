@@ -597,6 +597,13 @@ static void atmel_start_tx(struct uart_port *port)
 		/* re-enable PDC transmit */
 		atmel_uart_writel(port, ATMEL_PDC_PTCR, ATMEL_PDC_TXTEN);
 
+	if (port->rs485.flags & SER_RS485_ENABLED) {
+		u_int mctrl = 0;
+		mctrl_gpio_get(atmel_port->gpios, &mctrl);
+		mctrl |= TIOCM_RTS;
+		mctrl_gpio_set(atmel_port->gpios, mctrl);
+	}
+
 	/* Enable interrupts */
 	atmel_uart_writel(port, ATMEL_US_IER, atmel_port->tx_done_mask);
 
@@ -610,6 +617,8 @@ static void atmel_start_tx(struct uart_port *port)
  */
 static void atmel_start_rx(struct uart_port *port)
 {
+	struct atmel_uart_port *atmel_port = to_atmel_uart_port(port);
+
 	/* reset status and receiver */
 	atmel_uart_writel(port, ATMEL_US_CR, ATMEL_US_RSTSTA);
 
@@ -623,6 +632,13 @@ static void atmel_start_rx(struct uart_port *port)
 		atmel_uart_writel(port, ATMEL_PDC_PTCR, ATMEL_PDC_RXTEN);
 	} else {
 		atmel_uart_writel(port, ATMEL_US_IER, ATMEL_US_RXRDY);
+	}
+
+	if (port->rs485.flags & SER_RS485_ENABLED) {
+		u_int mctrl = 0;
+		mctrl_gpio_get(atmel_port->gpios, &mctrl);
+		mctrl &= ~TIOCM_RTS;
+		mctrl_gpio_set(atmel_port->gpios, mctrl);
 	}
 }
 
