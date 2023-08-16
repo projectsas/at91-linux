@@ -1554,9 +1554,13 @@ static void gpio_irq_unmask(struct irq_data *d)
 static int gpio_irq_type(struct irq_data *d, unsigned type)
 {
 	switch (type) {
-	case IRQ_TYPE_NONE:
+	case IRQ_TYPE_EDGE_RISING:
+	case IRQ_TYPE_EDGE_FALLING:
+	case IRQ_TYPE_LEVEL_LOW:
+	case IRQ_TYPE_LEVEL_HIGH:
 	case IRQ_TYPE_EDGE_BOTH:
 		return 0;
+	case IRQ_TYPE_NONE:
 	default:
 		return -EINVAL;
 	}
