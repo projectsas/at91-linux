@@ -76,6 +76,18 @@
 			macb0: ethernet@fffbc000 {
 				phy-mode = "rmii";
 				status = "okay";
+
+				mdio {
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					ethernet-phy@1 {
+						reg = <1>;
+						compatible = "ethernet-phy-id2000.5c90";
+						interrupt-parent = <&pioE>;
+						interrupts = <31 IRQ_TYPE_EDGE_FALLING>;
+					};
+				};
 			};
 
 			usb1: gadget@fff78000 {
