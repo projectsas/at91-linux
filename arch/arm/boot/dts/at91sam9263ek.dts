@@ -192,11 +192,11 @@
 					ti,y-max = /bits/ 16 <240>; */
 					ti,x-plate-ohms = /bits/ 16 <600>;
 					ti,pressure-max = /bits/ 16 <255>;
-					/* ti,debounce-max = /bits/ 16 <10>;
-					ti,debounce-tol = /bits/ 16 <3>;
-					ti,debounce-rep = /bits/ 16 <1>;
+					ti,debounce-max = /bits/ 16 <8>;
+					ti,debounce-tol = /bits/ 16 <16>;
+					ti,debounce-rep = /bits/ 16 <3>;
 					ti,settle-delay-usec = /bits/ 16 <150>;
-					ti,penirq-recheck-delay-usecs = /bits/ 16 <1>; */
+					ti,penirq-recheck-delay-usecs = /bits/ 16 <100>;
 
 					wakeup-source;
 				};
