@@ -26,6 +26,7 @@ struct atmel_lcdfb_pdata {
 	bool			lcdcon_pol_negative;
 	u8			default_bpp;
 	u8			lcd_wiring_mode;
+	enum display_flags	vm_flags;	/* display flags */
 	unsigned int		default_lcdcon2;
 	unsigned int		default_dmacon;
 	void (*atmel_lcdfb_power_control)(struct atmel_lcdfb_pdata *pdata, int on);

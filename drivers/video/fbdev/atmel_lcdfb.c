@@ -627,6 +627,10 @@ static int atmel_lcdfb_set_par(struct fb_info *info)
 		value |= ATMEL_LCDC_INVLINE_INVERTED;
 	if (!(info->var.sync & FB_SYNC_VERT_HIGH_ACT))
 		value |= ATMEL_LCDC_INVFRAME_INVERTED;
+	if (pdata->vm_flags & DISPLAY_FLAGS_PIXDATA_POSEDGE)
+		value |= ATMEL_LCDC_INVCLK_INVERTED;
+	if (!(pdata->vm_flags & DISPLAY_FLAGS_DE_HIGH))
+		value |= ATMEL_LCDC_INVDVAL_INVERTED;
 
 	switch (info->var.bits_per_pixel) {
 		case 1:	value |= ATMEL_LCDC_PIXELSIZE_1; break;
@@ -639,7 +643,7 @@ static int atmel_lcdfb_set_par(struct fb_info *info)
 		case 32: value |= ATMEL_LCDC_PIXELSIZE_32; break;
 		default: BUG(); break;
 	}
-	dev_dbg(info->device, "  * LCDCON2 = %08lx\n", value);
+	dev_info(info->device, "  * LCDCON2 = %08lx\n", value);
 	lcdc_writel(sinfo, ATMEL_LCDC_LCDCON2, value);
 
 	/* Vertical timing */
@@ -1031,6 +1035,8 @@ static int atmel_lcdfb_of_init(struct atmel_lcdfb_info *sinfo)
 	ret = fb_videomode_from_videomode(&vm, &fb_vm);
 	if (ret < 0)
 		goto put_display_node;
+
+	pdata->vm_flags = vm.flags; /* vm.flags are not available in fb_vm */
 
 	fb_add_videomode(&fb_vm, &info->modelist);
 

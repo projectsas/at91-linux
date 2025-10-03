@@ -215,7 +215,7 @@
 				bits-per-pixel = <16>;
 				atmel,lcdcon-backlight;
 				atmel,dmacon = <0x1>;
-				atmel,lcdcon2 = <0x80009802>;
+				atmel,lcdcon2 = <0x80008002>; /* LE, clk always act, TFT */
 				atmel,guard-time = <1>;
 
 				display-timings {
