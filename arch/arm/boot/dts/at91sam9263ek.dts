@@ -253,6 +253,7 @@
 					cs-gpios = <&pioD 15 GPIO_ACTIVE_HIGH>;
 					nand-bus-width = <8>;
 					nand-ecc-mode = "soft";
+					nand-ecc-algo = "bch";
 					nand-on-flash-bbt;
 					label = "atmel_nand";
 
